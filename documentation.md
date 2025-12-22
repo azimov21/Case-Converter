@@ -1,0 +1,481 @@
+# Документация Case Converter Extension
+
+## Общее описание решения
+
+Case Converter - это плагин для Visual Studio Code, который позволяет быстро преобразовывать выделенный текст между различными стилями именования. Расширение предназначено для повышения продуктивности разработчиков при работе с кодом, требующим согласованности в именовании переменных, функций и других идентификаторов.
+
+### Архитектура решения
+
+**Основные компоненты системы:**
+
+1. **Extension Activation Module**
+   - **Файл**: `extension.js`
+   - **Назначение**: Инициализация расширения
+   - **Ответственность**: Регистрация команд и обработчиков событий
+
+2. **Text Processing Engine**
+   - **Компонент**: Функции преобразования
+   - **Назначение**: Обработка текста согласно выбранному стилю
+   - **Алгоритмы**: Разбор текста на слова, применение правил стиля
+
+3. **Editor Integration Layer**
+   - **API**: `vscode.TextEditor`, `vscode.Selection`
+   - **Назначение**: Взаимодействие с редактором VS Code
+   - **Функции**: Получение выделенного текста, замена содержимого
+
+4. **User Interface Controller**
+   - **Компоненты**: Command Palette, контекстное меню
+   - **Назначение**: Предоставление интерфейса для пользователя
+   - **Элементы**: Три команды преобразования
+
+## Принцип работы:
+
+**Последовательность выполнения:**
+
+1. Активация расширения при запуске VS Code
+2. Регистрация трех команд в Command Palette
+3. Добавление команд в контекстное меню редактора
+4. Ожидание пользовательского ввода
+5. При вызове команды:
+   - Получение выделенного текста
+   - Применение соответствующего алгоритма преобразования
+   - Замена выделенного текста результатом
+6. Отображение уведомления о успешном выполнении
+
+### Поток данных
+
+1. **Входные данные**:
+   - Выделенный текст из редактора
+   - Тип преобразования (snake_case, camelCase, PascalCase)
+
+2. **Обработка**:
+   ```
+   Основной алгоритм преобразования:
+   1. Разделение текста на слова (по пробелам, подчеркиваниям, дефисам, заглавным буквам)
+   2. Приведение слов к нижнему регистру (для базовой формы)
+   3. Применение правил выбранного стиля:
+      - snake_case: слова_через_подчеркивания
+      - camelCase: первоеСловоСтрочными_остальныеСЗаглавной
+      - PascalCase: КаждоеСловоСЗаглавнойБуквы
+   4. Склейка слов в соответствии с правилами стиля
+   ```
+
+3. **Выходные данные**:
+   - Преобразованный текст в редакторе
+   - Уведомление пользователю
+
+### Основные функции:
+
+```javascript
+/**
+ * Активация расширения - точка входа
+ * @param {vscode.ExtensionContext} context - Контекст расширения
+ */
+function activate(context) {
+    console.log('Case Converter extension is now active!');
+    
+    // Регистрация команд
+    const snakeCaseCommand = vscode.commands.registerCommand('case-converter.toSnakeCase', () => {
+        convertText('snake');
+    });
+    
+    const camelCaseCommand = vscode.commands.registerCommand('case-converter.toCamelCase', () => {
+        convertText('camel');
+    });
+    
+    const pascalCaseCommand = vscode.commands.registerCommand('case-converter.toPascalCase', () => {
+        convertText('pascal');
+    });
+    
+    // Добавление команд в контекст
+    context.subscriptions.push(snakeCaseCommand, camelCaseCommand, pascalCaseCommand);
+}
+
+/**
+ * Основная функция преобразования текста
+ * @param {string} conversionType - Тип преобразования: 'snake', 'camel', 'pascal'
+ */
+async function convertText(conversionType) {
+    const editor = vscode.window.activeTextEditor;
+    
+    if (!editor) {
+        vscode.window.showErrorMessage('No active editor found!');
+        return;
+    }
+    
+    const selection = editor.selection;
+    const text = editor.document.getText(selection);
+    
+    if (!text) {
+        vscode.window.showErrorMessage('No text selected!');
+        return;
+    }
+    
+    let convertedText;
+    
+    switch(conversionType) {
+        case 'snake':
+            convertedText = toSnakeCase(text);
+            break;
+        case 'camel':
+            convertedText = toCamelCase(text);
+            break;
+        case 'pascal':
+            convertedText = toPascalCase(text);
+            break;
+        default:
+            vscode.window.showErrorMessage('Invalid conversion type!');
+            return;
+    }
+    
+    // Заменяем выделенный текст
+    await editor.edit(editBuilder => {
+        editBuilder.replace(selection, convertedText);
+    });
+    
+    vscode.window.showInformationMessage(`Converted to ${conversionType} case!`);
+}
+```
+
+## Технические особенности
+
+### Используемые технологии и API
+
+**1. JavaScript (ES6+)**
+   - **Версия**: Совместимость с Node.js 14+
+   - **Назначение**: Основной язык разработки
+   - **Особенности**: Чистый JavaScript без транспиляции
+
+**2. VS Code Extension API**
+   - **Модули**: `vscode` namespace
+   - **Ключевые классы**:
+     - `vscode.window.activeTextEditor` - доступ к активному редактору
+     - `vscode.Selection` - работа с выделением текста
+     - `vscode.commands.registerCommand()` - регистрация команд
+     - `vscode.window.showInformationMessage()` - уведомления пользователю
+
+**3. Регулярные выражения**
+   - **Паттерн**: `/(?=[A-Z])|[\s_\-]+/`
+   - **Назначение**: Разделение текста на слова
+   - **Логика**: Разделение по заглавным буквам, пробелам, подчеркиваниям, дефисам
+
+## Ключевые возможности
+
+### Поддерживаемые стили именования
+
+**snake_case**
+- **Формат**: `слова_через_подчеркивания`
+- **Регистр**: Все буквы строчные
+- **Пример**: `user_profile`, `database_connection`
+
+**camelCase**
+- **Формат**: `первоеСловоСтрочнымиОстальныеСЗаглавной`
+- **Правила**: Первое слово полностью строчное, остальные с заглавной первой буквой
+- **Пример**: `userProfile`, `getDatabaseConnection`
+
+**PascalCase**
+- **Формат**: `КаждоеСловоСЗаглавнойБуквы`
+- **Правила**: Все слова начинаются с заглавной буквы
+- **Пример**: `UserProfile`, `DatabaseConnection`
+
+### Способы использования
+
+**Через Command Palette:**
+1. Выделите текст
+2. Нажмите `Ctrl+Shift+P`
+3. Введите одну из команд:
+   - "Convert to snake_case"
+   - "Convert to camelCase"
+   - "Convert to PascalCase"
+
+**Через контекстное меню:**
+1. Выделите текст
+2. Щелкните правой кнопкой мыши
+3. Выберите нужный вариант в меню "Case Converter"
+
+### Поддерживаемые входные форматы
+
+Плагин корректно обрабатывает текст в различных форматах:
+- **С пробелами**: `hello world` → `hello_world`, `helloWorld`, `HelloWorld`
+- **С подчеркиваниями**: `hello_world` → `hello_world`, `helloWorld`, `HelloWorld`
+- **С дефисами**: `hello-world` → `hello_world`, `helloWorld`, `HelloWorld`
+- **В camelCase**: `helloWorld` → `hello_world`, `helloWorld`, `HelloWorld`
+- **В PascalCase**: `HelloWorld` → `hello_world`, `helloWorld`, `HelloWorld`
+- **Смешанные стили**: `Hello-World_Test` → `hello_world_test`, `helloWorldTest`, `HelloWorldTest`
+
+## Описание ключевых файлов
+
+### `extension.js`
+- **Тип**: JavaScript исходный код
+- **Назначение**: Основная логика расширения
+- **Структура**:
+  - Функции активации/деактивации
+  - Функции преобразования текста
+  - Обработчики команд
+- **Экспорты**: `activate()`, `deactivate()`, функции преобразования
+
+### `package.json`
+- **Тип**: Manifest файл
+- **Назначение**: Конфигурация расширения VS Code
+- **Ключевые секции**:
+  - `activationEvents`: Условия активации расширения
+  - `commands`: Регистрация команд
+  - `contributes.menus`: Интеграция в контекстное меню
+  - `engines`: Совместимость с VS Code
+
+### `README.md`
+- **Тип**: Документация
+- **Назначение**: Описание плагина для пользователей
+- **Содержание**: Инструкции по установке, использованию, примеры
+
+### `LICENSE`
+- **Тип**: Лицензионное соглашение
+- **Лицензия**: MIT License
+- **Назначение**: Определение условий использования
+
+## Конфигурация
+
+### Настройки package.json
+
+**Секция `activationEvents`:**
+```json
+{
+  "activationEvents": [
+    "onCommand:case-converter.toSnakeCase",
+    "onCommand:case-converter.toCamelCase",
+    "onCommand:case-converter.toPascalCase"
+  ]
+}
+```
+- **Назначение**: Определяет условия активации расширения
+- **Значение**: Активация при вызове любой из команд
+
+**Секция `commands`:**
+```json
+{
+  "commands": [
+    {
+      "command": "case-converter.toSnakeCase",
+      "title": "Convert to snake_case"
+    },
+    {
+      "command": "case-converter.toCamelCase",
+      "title": "Convert to camelCase"
+    },
+    {
+      "command": "case-converter.toPascalCase",
+      "title": "Convert to PascalCase"
+    }
+  ]
+}
+```
+- **command**: Идентификатор команды
+- **title**: Отображаемое название в палитре команд
+
+**Секция `contributes.menus`:**
+```json
+{
+  "menus": {
+    "editor/context": [
+      {
+        "command": "case-converter.toSnakeCase",
+        "group": "case-converter@1"
+      },
+      {
+        "command": "case-converter.toCamelCase",
+        "group": "case-converter@1"
+      },
+      {
+        "command": "case-converter.toPascalCase",
+        "group": "case-converter@1"
+      }
+    ]
+  }
+}
+```
+- **editor/context**: Контекстное меню редактора
+- **group**: Группировка команд в меню
+
+**Секция `engines`:**
+```json
+{
+  "engines": {
+    "vscode": "^1.60.0"
+  }
+}
+```
+- **vscode**: Минимальная версия VS Code
+
+## Система валидации
+
+### Проверка входных данных
+
+**Валидация выделенного текста:**
+```javascript
+const editor = vscode.window.activeTextEditor;
+    
+if (!editor) {
+    vscode.window.showErrorMessage('No active editor found!');
+    return;
+}
+    
+const selection = editor.selection;
+const text = editor.document.getText(selection);
+    
+if (!text) {
+    vscode.window.showErrorMessage('No text selected!');
+    return;
+}
+```
+
+**Валидация типа преобразования:**
+```javascript
+switch(conversionType) {
+    case 'snake':
+        convertedText = toSnakeCase(text);
+        break;
+    case 'camel':
+        convertedText = toCamelCase(text);
+        break;
+    case 'pascal':
+        convertedText = toPascalCase(text);
+        break;
+    default:
+        vscode.window.showErrorMessage('Invalid conversion type!');
+        return;
+}
+```
+
+### Обработка ошибок
+
+1. **Нет активного редактора**: Показывается сообщение об ошибке
+2. **Нет выделенного текста**: Показывается сообщение об ошибке
+3. **Неизвестный тип преобразования**: Показывается сообщение об ошибке
+4. **Ошибка при замене текста**: Исключение обрабатывается через Promise
+
+## Система уведомлений
+
+### Типы сообщений
+
+**Информационные сообщения:**
+- Успешное преобразование: `"Converted to [тип] case!"`
+- Активация расширения: `"Case Converter extension is now active!"` (в консоль)
+
+**Сообщения об ошибках:**
+- Нет активного редактора: `"No active editor found!"`
+- Нет выделенного текста: `"No text selected!"`
+- Неверный тип преобразования: `"Invalid conversion type!"`
+
+### Методы отображения
+
+- `vscode.window.showInformationMessage()` - для успешных операций
+- `vscode.window.showErrorMessage()` - для ошибок
+- `console.log()` - для отладочной информации
+
+## Оптимизации
+
+### Эффективное управление ресурсами
+
+**Минимальная активация:**
+- Расширение активируется только при вызове команд
+- Нет фоновых процессов или постоянных слушателей
+- Низкое потребление памяти
+
+**Быстрые алгоритмы:**
+- Использование регулярных выражений для эффективного разбора текста
+- Прямая работа с API редактора без промежуточных слоев
+- Минимальное количество операций для преобразования
+
+**Экономное использование API:**
+- Один вызов `editor.edit()` для замены текста
+- Точечные уведомления пользователю
+- Отсутствие тяжелых зависимостей
+
+## Безопасность
+
+### Меры безопасности
+
+**Изоляция выполнения:**
+- Код выполняется в изолированном окружении расширений VS Code
+- Нет доступа к файловой системе за пределами разрешений VS Code
+- Нет сетевых запросов или внешних зависимостей
+
+**Валидация данных:**
+- Проверка наличия активного редактора
+- Проверка выделенного текста
+- Проверка корректности типа преобразования
+
+**Безопасность текстовых операций:**
+- Использование безопасных методов API VS Code для работы с текстом
+- Отсутствие eval() или динамического выполнения кода
+- Работа только с выделенным текстом пользователя
+
+### Ограничения доступа
+
+- **Только чтение/запись выделенного текста**: Нет доступа к другим частям документа
+- **Только команды пользователя**: Нет автоматических операций
+- **Только текущий сеанс**: Нет сохранения данных или истории
+
+## Отладка и разработка
+
+### Настройка среды разработки
+
+**Предварительные требования:**
+- Node.js: 14.x или выше (только для упаковки)
+- VS Code: 1.60.0 или выше
+- vsce (Visual Studio Code Extensions): для упаковки
+
+### Команды разработки
+
+**Инициализация проекта:**
+```bash
+# Создание структуры файлов (вручную)
+mkdir case-converter
+cd case-converter
+```
+
+**Упаковка расширения:**
+```bash
+# Установка утилиты упаковки (один раз)
+npm install -g vsce
+
+# Сборка .vsix файла
+vsce package
+```
+
+**Установка для тестирования:**
+```bash
+# Установка собранного расширения
+code --install-extension case-converter-1.0.0.vsix
+
+# Или через интерфейс VS Code:
+# 1. Ctrl+Shift+P
+# 2. "Extensions: Install from VSIX..."
+# 3. Выберите .vsix файл
+```
+
+### Отладка
+
+**Запуск в режиме отладки:**
+1. Откройте папку проекта в VS Code
+2. Нажмите `F5` или перейдите в панель "Run and Debug"
+3. Выберите "Run Extension"
+4. Откроется новое окно VS Code с установленным расширением
+
+**Тестирование в отладочном окне:**
+1. Создайте новый файл
+2. Введите тестовый текст (например: `hello world test`)
+3. Выделите текст
+4. Используйте Command Palette или контекстное меню для преобразования
+5. Проверьте результат
+
+**Логирование:**
+- Консоль отладки в основном окне VS Code показывает сообщения активации
+- Ошибки отображаются через стандартные уведомления VS Code
+
+---
+
+*Документация создана в рамках лабораторной работы №3*
+
+*Автор: Маслов Денис Владимирович, группа М3101*  
+*GitHub: [azimov21](https://github.com/azimov21)*  

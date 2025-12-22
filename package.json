@@ -1,0 +1,74 @@
+{
+  "name": "case-converter",
+  "displayName": "Case Converter",
+  "description": "Case Converter - VS Code extension for text case transformation",
+  "version": "1.0.0",
+  "publisher": "azimov21",
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "categories": [
+    "Formatters"
+  ],
+  "activationEvents": [
+    "onCommand:case-converter.toSnakeCase",
+    "onCommand:case-converter.toCamelCase",
+    "onCommand:case-converter.toPascalCase"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "case-converter.toSnakeCase",
+        "title": "Convert to snake_case"
+      },
+      {
+        "command": "case-converter.toCamelCase",
+        "title": "Convert to camelCase"
+      },
+      {
+        "command": "case-converter.toPascalCase",
+        "title": "Convert to PascalCase"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "case-converter.toSnakeCase",
+          "group": "case-converter@1"
+        },
+        {
+          "command": "case-converter.toCamelCase",
+          "group": "case-converter@1"
+        },
+        {
+          "command": "case-converter.toPascalCase",
+          "group": "case-converter@1"
+        }
+      ]
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/azimov21/Case-Converter"
+  },
+  "license": "MIT",
+  "scripts": {
+    "vscode:prepublish": "echo 'Prepublish'",
+    "compile": "echo 'No compilation needed'",
+    "watch": "echo 'No watch needed'",
+    "pretest": "npm run compile",
+    "test": "echo 'No tests'",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.60.0"
+  },
+  "keywords": [],
+  "author": "azimov21",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/azimov21/Case-Converter#/issues"
+  },
+  "homepage": "https://github.com/azimov21/Case-Converter#readme"
+}
